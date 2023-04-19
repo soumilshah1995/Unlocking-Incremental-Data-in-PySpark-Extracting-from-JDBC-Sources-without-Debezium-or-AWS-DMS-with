@@ -119,10 +119,8 @@ def main():
         check_point_instance=helper_check_points
     )
 
-    insert_inc_df = query_instance.get_inc_insert()
-    update_inc_df = query_instance.get_inc_update()
-
     if helper_check_points.first_time_read_flag:
+        insert_inc_df = query_instance.get_inc_insert()
 
         helper_check_points.prev_commit = insert_inc_df.agg({pk: "max", updated_at_column_name: "max"}).collect()[0][0]
 
@@ -132,6 +130,8 @@ def main():
         helper_check_points.write()
 
     else:
+        insert_inc_df = query_instance.get_inc_insert()
+        update_inc_df = query_instance.get_inc_update()
         current_commit = insert_inc_df.agg({pk: "max", updated_at_column_name: "max"}).collect()[0][0]
 
         current_updated_date = update_inc_df.agg({pk: "max", updated_at_column_name: "max"}).collect()[0][1]
@@ -144,9 +144,13 @@ def main():
             if current_updated_date.__str__() > helper_check_points.prev_updated_date.__str__() :
                 helper_check_points.prev_updated_date = current_updated_date
 
+    result = None
     helper_check_points.write()
-    result = insert_inc_df.union(update_inc_df)
-    print(result.show())
+    if helper_check_points.first_time_read_flag:
+        result = insert_inc_df
+    else:
+        result = insert_inc_df.union(update_inc_df)
+        print(result.show())
 
 
 if __name__ == "__main__":
